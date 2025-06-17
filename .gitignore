@@ -1,1 +1,4 @@
 /whisper-large-v3/
+__pycache__/
+*.pyc
+.env
