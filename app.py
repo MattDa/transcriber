@@ -5,7 +5,7 @@ import logging
 import subprocess
 
 import streamlit as st
-import openai
+from openai import OpenAI
 import whisper
 import torch
 
@@ -119,8 +119,8 @@ if st.sidebar.button("Execute") and selected:
     ]
 
     try:
-        openai.api_base = centgpt_url
-        response = openai.ChatCompletion.create(
+        client = OpenAI(base_url=centgpt_url)
+        response = client.chat.completions.create(
             model="llama3-70b-instruct",
             messages=messages,
             stream=True,
@@ -128,26 +128,12 @@ if st.sidebar.button("Execute") and selected:
         placeholder = st.empty()
         collected = ""
         for chunk in response:
-            delta = chunk["choices"][0].get("delta", {})
-            if delta.get("content"):
-                collected += delta["content"]
+            delta = chunk.choices[0].delta.content
+            if delta:
+                collected += delta
                 placeholder.markdown(collected)
     except Exception:
         logger.exception("LLM request failed")
         st.error("Error contacting language model")
-
-    openai.api_base = centgpt_url
-    response = openai.ChatCompletion.create(
-        model="llama3-70b-instruct",
-        messages=messages,
-        stream=True,
-    )
-    placeholder = st.empty()
-    collected = ""
-    for chunk in response:
-        delta = chunk["choices"][0].get("delta", {})
-        if delta.get("content"):
-            collected += delta["content"]
-            placeholder.markdown(collected)
 
 
