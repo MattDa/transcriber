@@ -3,5 +3,4 @@ openai
 ffmpeg-python
 openai-whisper
 faster-whisper
-torch
 

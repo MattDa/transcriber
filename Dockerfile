@@ -1,5 +1,6 @@
-FROM python:3.10-slim
+FROM pytorch/pytorch:2.1.0-cuda12.8-cudnn8-runtime
 
+# Install ffmpeg for media processing
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
