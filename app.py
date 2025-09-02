@@ -8,6 +8,7 @@ import streamlit as st
 from openai import OpenAI
 import whisper
 import torch
+import tqdm
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s: %(message)s",
@@ -24,13 +25,18 @@ GEM_PROMPT = "<GEM_PROMPT_PLACEHOLDER>"
 @st.cache_resource
 def load_model():
     try:
-        model = whisper.load_model("large-v3")
-        return torch.compile(model, mode="reduce-overhead")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info("Loading Whisper model on %s", device)
+        try:
+            model = whisper.load_model("large-v3", device=device)
+        except TypeError:
+            model = whisper.load_model("large-v3")
+        if device == "cuda":
+            model = torch.compile(model, mode="reduce-overhead")
+        return model
     except Exception:
         logger.exception("Failed to load Whisper model")
         raise
-
-    return whisper.load_model("large-v3")
 
 
 model = load_model()
@@ -87,8 +93,30 @@ def process_uploaded_file(uploaded_file):
         if not validate_media_file(tmp_path):
             st.error("Invalid or corrupted media file")
             return None
-        result = model.transcribe(tmp_path)
-        return result["text"]
+        progress_bar = st.progress(0)
+        original_tqdm = tqdm.tqdm
+
+        class StreamlitTqdm(original_tqdm):
+            def update(self, n=1):
+                super().update(n)
+                if self.total:
+                    progress = int(self.n / self.total * 100)
+                    progress_bar.progress(min(progress, 100))
+
+            def close(self):
+                progress_bar.progress(100)
+                super().close()
+
+        tqdm.tqdm = StreamlitTqdm
+        try:
+            try:
+                result = model.transcribe(tmp_path, verbose=None)
+            except TypeError:
+                result = model.transcribe(tmp_path)
+            return result["text"]
+        finally:
+            tqdm.tqdm = original_tqdm
+            progress_bar.empty()
     finally:
         os.unlink(tmp_path)
 
