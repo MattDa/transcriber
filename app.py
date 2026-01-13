@@ -122,9 +122,12 @@ def process_uploaded_file(uploaded_file):
         os.unlink(tmp_path)
 
 
+
 def handle_new_upload(uploaded_file):
+    # 1. Check if file is missing or already processed
     if uploaded_file is None or uploaded_file.name in st.session_state.transcripts:
         return
+
     try:
         with st.spinner("Processing file..."):
             text = process_uploaded_file(uploaded_file)
@@ -133,8 +136,8 @@ def handle_new_upload(uploaded_file):
     except Exception:
         logger.exception("Failed to process uploaded file")
         st.error("Error processing file")
-    # finally:
-    #     st.session_state.uploader = None
+    finally:
+        st.session_state.uploader = None
 
 handle_new_upload(uploaded)
 
