@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 import logging
 import subprocess
+import uuid
 
 import streamlit as st
 from openai import OpenAI
@@ -28,9 +29,9 @@ def load_model():
         device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info("Loading Whisper model on %s", device)
         try:
-            model = whisper.load_model("large-v3", device=device)
+            model = whisper.load_model("large-v3", download_root='/models/large-v3', device=device)
         except TypeError:
-            model = whisper.load_model("large-v3")
+            model = whisper.load_model("large-v3", download_root='/models/large-v3')
         if device == "cuda":
             model = torch.compile(model, mode="reduce-overhead")
         return model
@@ -45,12 +46,14 @@ st.title("Transcriber")
 
 if "transcripts" not in st.session_state:
     st.session_state["transcripts"] = {}
+if "uploader_key" not in st.session_state:
+    st.session_state["uploader_key"] = "uploader"
 
 uploaded = st.file_uploader(
     "Upload audio/video/text",
     type=["mp4", "mp3", "wav", "m4a", "ogg", "flac", "txt"],
     accept_multiple_files=False,
-    key="uploader",
+    key=st.session_state["uploader_key"],
 )
 
 
@@ -133,6 +136,7 @@ def handle_new_upload(uploaded_file):
             text = process_uploaded_file(uploaded_file)
             if text is not None:
                 st.session_state.transcripts[uploaded_file.name] = text
+                st.session_state["uploader_key"] = f"uploader_{uuid.uuid4().hex}"
     except Exception:
         logger.exception("Failed to process uploaded file")
         st.error("Error processing file")
